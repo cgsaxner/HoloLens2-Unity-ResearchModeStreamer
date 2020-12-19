@@ -1,6 +1,8 @@
 # HoloLens2-Unity-ResearchModeStreamer
 
-Unity Plugin for accessing HoloLens2 Research Mode sensors and video camera, and streaming them to desktop. It builds upon the official [HoloLens2ForCV](https://github.com/microsoft/HoloLens2ForCV) and [HoloLensForCV](https://github.com/microsoft/HoloLensForCV) repos. Currently, only Depth AHAT and video camera streams are enabled, but an extension to other RM sensors should be straight forward and will probably be added in the future.
+Unity Plugin for accessing HoloLens2 Research Mode sensors and video camera, and streaming them to desktop. It builds upon the official [HoloLens2ForCV](https://github.com/microsoft/HoloLens2ForCV) and [HoloLensForCV](https://github.com/microsoft/HoloLensForCV) repos. 
+
+Currently, only Depth AHAT and video camera streams are enabled, but an extension to other RM sensors should be straight forward and will probably be added in the future. The image, as well as ```rig2world``` transforms for AHAT and and ```pv2world```, ```fx``` and ```fy``` for video camera are transmitted for each frame.
 
 ## Using the Plugin
 1. Open the [plugin solution](https://github.com/cgsaxner/HoloLens2-Unity-ResearchModeStreamer/tree/master/HL2RmStreamUnityPlugin) in Visual Studio
@@ -27,5 +29,5 @@ public static extern void StartStreaming();
 10. Build solution for ```Release, ARM64``` and deploy to HoloLens2.
 
 ## Python Client
-
+A simple client written in python for receiving and displaying the frames is available in [hololens2_simpleclient.py](https://github.com/cgsaxner/HoloLens2-Unity-ResearchModeStreamer/blob/master/py/hololens2_simpleclient.py).
 
