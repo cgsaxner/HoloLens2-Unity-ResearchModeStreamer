@@ -328,12 +328,20 @@ void VideoCameraStreamer::SendFrame(
     m_writeInProgress = true;
     try
     {
+        int outImageWidth = imageWidth / scaleFactor;
+        int outImageHeight = imageHeight / scaleFactor;
+
+        // pixel stride is reduced by 1 since we skip alpha channel
+        int outPixelStride = pixelStride - 1;
+        int outRowStride = outImageWidth * outPixelStride;
+
+
         // Write header
         m_writer.WriteUInt64(pTimestamp);
-        m_writer.WriteInt32(imageWidth);
-        m_writer.WriteInt32(imageHeight);
-        m_writer.WriteInt32(pixelStride - 1);
-        m_writer.WriteInt32(imageWidth * (pixelStride - 1)); // adapted row stride
+        m_writer.WriteInt32(outImageWidth);
+        m_writer.WriteInt32(outImageHeight);
+        m_writer.WriteInt32(outPixelStride);
+        m_writer.WriteInt32(outRowStride);
         m_writer.WriteSingle(fx);
         m_writer.WriteSingle(fy);
 
