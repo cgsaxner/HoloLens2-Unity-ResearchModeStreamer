@@ -8,8 +8,13 @@
 #include <wchar.h>
 #include <comdef.h>
 #include <MemoryBuffer.h>
+
 #include <deque>
+#include <queue>
 #include <codecvt>
+#include <chrono>
+
+#include <Eigen>
 
 #include <winrt\base.h>
 #include <winrt\Windows.Foundation.h>
@@ -25,6 +30,10 @@
 #include "TimeConverter.h"
 #include "ResearchModeApi.h"
 #include "IResearchModeFrameSink.h"
+#include "IVideoFrameSink.h"
 #include "ResearchModeFrameProcessor.h"
+#include "ResearchModeFrameStreamer.h"
+#include "VideoCameraFrameProcessor.h"
 #include "VideoCameraStreamer.h"
-#include "Streamer.h"
+
+

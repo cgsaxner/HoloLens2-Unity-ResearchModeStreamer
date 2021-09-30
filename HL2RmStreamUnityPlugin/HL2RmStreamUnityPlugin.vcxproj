@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|ARM">
@@ -217,11 +217,14 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <PreprocessorDefinitions>FUNCTIONS_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalOptions>/await %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalIncludeDirectories>D:\Christina\Code\eigen-3.3.7\Eigen;D:\Christina\HoloLens2RMFrameStreamer\HL2RmStreamUnityPlugin\Dependencies\include\opencv2\;D:\Christina\HoloLens2RMFrameStreamer\HL2RmStreamUnityPlugin\Dependencies\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <GenerateWindowsMetadata>false</GenerateWindowsMetadata>
+      <AdditionalLibraryDirectories>D:\Christina\HoloLens2RMFrameStreamer\HL2RmStreamUnityPlugin\Dependencies\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>opencv_calib3d430.lib;opencv_core430.lib;opencv_features2d430.lib;opencv_flann430.lib;opencv_highgui430.lib;opencv_imgcodecs430.lib;opencv_imgproc430.lib;opencv_ml430.lib;opencv_objdetect430.lib;opencv_photo430.lib;opencv_stitching430.lib;opencv_video430.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -249,12 +252,14 @@
   <ItemGroup>
     <ClInclude Include="HL2RmStreamUnityPlugin.h" />
     <ClInclude Include="IResearchModeFrameSink.h" />
+    <ClInclude Include="IVideoFrameSink.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="ResearchModeApi.h" />
     <ClInclude Include="ResearchModeFrameProcessor.h" />
-    <ClInclude Include="Streamer.h" />
+    <ClInclude Include="ResearchModeFrameStreamer.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="TimeConverter.h" />
+    <ClInclude Include="VideoCameraFrameProcessor.h" />
     <ClInclude Include="VideoCameraStreamer.h" />
   </ItemGroup>
   <ItemGroup>
@@ -271,8 +276,9 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="ResearchModeFrameProcessor.cpp" />
-    <ClCompile Include="Streamer.cpp" />
+    <ClCompile Include="ResearchModeFrameStreamer.cpp" />
     <ClCompile Include="TimeConverter.cpp" />
+    <ClCompile Include="VideoCameraFrameProcessor.cpp" />
     <ClCompile Include="VideoCameraStreamer.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -5,6 +5,6 @@ class IResearchModeFrameSink
 public:
 	virtual ~IResearchModeFrameSink() {};
 	virtual void Send(
-		IResearchModeSensorFrame* pSensorFrame,
+		std::shared_ptr<IResearchModeSensorFrame> pSensorFrame,
 		ResearchModeSensorType pSensorType) = 0;
-}; 
+};

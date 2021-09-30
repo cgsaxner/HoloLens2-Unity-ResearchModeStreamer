@@ -1,17 +1,20 @@
 #pragma once
-class Streamer : public IResearchModeFrameSink
+class ResearchModeFrameStreamer : public IResearchModeFrameSink
 {
 public:
-	Streamer(
+	ResearchModeFrameStreamer(
 		std::wstring portName,
 		const GUID& guid,
 		const winrt::Windows::Perception::Spatial::SpatialCoordinateSystem& coordSystem);
 
 	void Send(
-		IResearchModeSensorFrame* frame,
+		std::shared_ptr<IResearchModeSensorFrame> frame,
 		ResearchModeSensorType pSensorType);
 
-	void StreamingToggle();
+	//void StreamingToggle();
+
+public:
+	bool isConnected = false;
 
 private:
 	winrt::Windows::Foundation::IAsyncAction StartServer();
@@ -32,11 +35,10 @@ private:
 	// socket, listener and writer
 	winrt::Windows::Networking::Sockets::StreamSocketListener m_streamSocketListener;
 	winrt::Windows::Networking::Sockets::StreamSocket m_streamSocket = nullptr;
-	winrt::Windows::Storage::Streams::DataWriter m_writer;
+	winrt::Windows::Storage::Streams::DataWriter m_writer = nullptr;
 	bool m_writeInProgress = false;
 
 	std::wstring m_portName;
-	bool m_streamingEnabled = true;
 
 	TimeConverter m_converter;
 };

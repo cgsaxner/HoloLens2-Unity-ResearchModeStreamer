@@ -1,7 +1,7 @@
 ﻿#include "pch.h"
 #include "HL2RmStreamUnityPlugin.h"
 
-#define DBG_ENABLE_VERBOSE_LOGGING 1
+#define DBG_ENABLE_VERBOSE_LOGGING 0
 #define DBG_ENABLE_INFO_LOGGING 1
 
 extern "C"
@@ -14,11 +14,10 @@ static HANDLE camConsentGiven;
 static ResearchModeSensorConsent imuAccessCheck;
 static HANDLE imuConsentGiven;
 
-//using namespace winrt::Windows::Foundation;
 using namespace winrt::Windows::Perception::Spatial;
 
 
-void __stdcall HL2Stream::StartStreaming()
+void __stdcall HL2Stream::Initialize()
 {
 #if DBG_ENABLE_INFO_LOGGING
 	OutputDebugStringW(L"HL2Stream::StartStreaming: Initializing...\n");
@@ -29,19 +28,54 @@ void __stdcall HL2Stream::StartStreaming()
 
 	InitializeResearchModeSensors();
 	InitializeResearchModeProcessing();
-
-	InitializeVideoFrameProcessorAsync();
+	auto processOp{ InitializeVideoFrameProcessorAsync() };
+	processOp.get();
 
 #if DBG_ENABLE_INFO_LOGGING
 	OutputDebugStringW(L"HL2Stream::StartStreaming: Done.\n");
 #endif
+
+	StartStreaming();
 }
 
 void HL2Stream::StreamingToggle()
 {
-	m_videoFrameProcessor->StreamingToggle();
-	m_pAHATStreamer->StreamingToggle();
+	if (!isStreaming)
+	{
+		StartStreaming();
+	}
+	else
+	{
+		StopStreaming();
+	}
 }
+
+void HL2Stream::StartStreaming()
+{
+#if DBG_ENABLE_INFO_LOGGING
+	OutputDebugStringW(L"HL2Stream::StartStreaming: Starting streaming!\n");
+#endif
+	// start the AHAT processor
+	m_pAHATProcessor->Start();
+
+	// start the Video video processor
+	m_pVideoFrameProcessor->StartAsync();
+	isStreaming = true;
+}
+
+void HL2Stream::StopStreaming()
+{
+	if (m_pAHATProcessor && m_pAHATProcessor->isRunning)
+	{
+		m_pAHATProcessor->Stop();
+	}
+	if (m_pVideoFrameStreamer && m_pVideoFrameProcessor->isRunning)
+	{
+		m_pVideoFrameProcessor->Stop();
+	}
+	isStreaming = false;
+}
+
 
 winrt::Windows::Foundation::IAsyncAction HL2Stream::InitializeVideoFrameProcessorAsync()
 {
@@ -51,13 +85,15 @@ winrt::Windows::Foundation::IAsyncAction HL2Stream::InitializeVideoFrameProcesso
 		return;
 	}
 
-	m_videoFrameProcessor = std::make_unique<VideoCameraStreamer>();
-	if (!m_videoFrameProcessor.get())
+	// the frame processor
+	m_pVideoFrameProcessor = std::make_unique<VideoCameraFrameProcessor>();
+	m_pVideoFrameStreamer = std::make_shared<VideoCameraStreamer>(m_worldOrigin, L"23940");
+	if (!m_pVideoFrameStreamer.get())
 	{
 		throw winrt::hresult(E_POINTER);
 	}
-
-	co_await m_videoFrameProcessor->InitializeAsync(0, m_worldOrigin, L"23940");
+	// initialize the frame processor with a streamer sink
+	co_await m_pVideoFrameProcessor->InitializeAsync(m_pVideoFrameStreamer);
 }
 
 
@@ -72,7 +108,7 @@ void HL2Stream::InitializeResearchModeSensors()
 	if (hrResearchMode)
 	{
 #if DBG_ENABLE_VERBOSE_LOGGING
-		OutputDebugStringW(L"Image2Face::InitializeSensors: Creating sensor device...\n");
+		OutputDebugStringW(L"HL2Stream::InitializeResearchModeSensors: Creating sensor device...\n");
 #endif
 		// create the research mode sensor device
 		typedef HRESULT(__cdecl* PFN_CREATEPROVIDER) (IResearchModeSensorDevice** ppSensorDevice);
@@ -104,17 +140,16 @@ void HL2Stream::InitializeResearchModeSensors()
 	for (const auto& sensorDescriptor : m_sensorDescriptors)
 	{
 		wchar_t msgBuffer[200];
-
 		if (sensorDescriptor.sensorType == DEPTH_AHAT)
 		{
 			winrt::check_hresult(m_pSensorDevice->GetSensor(
 				sensorDescriptor.sensorType, &m_pAHATSensor));
-			swprintf_s(msgBuffer, L"Image2Face::InitializeSensors: Sensor %ls\n",
+			swprintf_s(msgBuffer, L"HL2Stream::InitializeResearchModeSensors: Sensor %ls\n",
 				m_pAHATSensor->GetFriendlyName());
 			OutputDebugStringW(msgBuffer);
 		}
 	}
-	OutputDebugStringW(L"Image2Face::InitializeSensors: Done.\n");
+	OutputDebugStringW(L"HL2Stream::InitializeResearchModeSensors: Done.\n");
 	return;
 }
 
@@ -125,7 +160,8 @@ void HL2Stream::InitializeResearchModeProcessing()
 	GUID guid;
 	GetRigNodeId(guid);
 
-	auto ahatStreamer = std::make_shared<Streamer>(L"23941", guid, m_worldOrigin);
+	// initialize the depth streamer
+	auto ahatStreamer = std::make_shared<ResearchModeFrameStreamer>(L"23941", guid, m_worldOrigin);
 	m_pAHATStreamer = ahatStreamer;
 
 	if (m_pAHATSensor)
@@ -152,11 +188,19 @@ void HL2Stream::ImuAccessOnComplete(ResearchModeSensorConsent consent)
 void HL2Stream::DisableSensors()
 {
 #if DBG_ENABLE_VERBOSE_LOGGING
-	OutputDebugString(L"Image2Face::DisableSensors: Disabling sensors...\n");
+	OutputDebugString(L"HL2Stream::DisableSensors: Disabling sensors...\n");
 #endif // DBG_ENABLE_VERBOSE_LOGGING
 	if (m_pAHATSensor)
 	{
 		m_pAHATSensor->Release();
+	}
+	if (m_pLFCameraSensor)
+	{
+		m_pLFCameraSensor->Release();
+	}
+	if (m_pRFCameraSensor)
+	{
+		m_pRFCameraSensor->Release();
 	}
 	if (m_pSensorDevice)
 	{
@@ -168,7 +212,7 @@ void HL2Stream::DisableSensors()
 		m_pSensorDeviceConsent->Release();
 	}
 #if DBG_ENABLE_VERBOSE_LOGGING
-	OutputDebugString(L"Image2Face::DisableSensors: Done.\n");
+	OutputDebugString(L"HL2Stream::DisableSensors: Done.\n");
 #endif // DBG_ENABLE_VERBOSE_LOGGING
 }
 

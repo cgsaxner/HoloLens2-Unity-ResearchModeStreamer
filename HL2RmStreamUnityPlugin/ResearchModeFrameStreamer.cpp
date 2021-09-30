@@ -1,8 +1,9 @@
 #include "pch.h"
 
+#define DBG_ENABLE_VERBOSE_LOGGING 0
 #define DBG_ENABLE_INFO_LOGGING 1
 #define DBG_ENABLE_ERROR_LOGGING 1
-#define DBG_ENABLE_VERBOSE_LOGGING 0
+
 
 using namespace winrt::Windows::Networking::Sockets;
 using namespace winrt::Windows::Storage::Streams;
@@ -10,7 +11,7 @@ using namespace winrt::Windows::Perception;
 using namespace winrt::Windows::Perception::Spatial;
 using namespace winrt::Windows::Foundation::Numerics;
 
-Streamer::Streamer(
+ResearchModeFrameStreamer::ResearchModeFrameStreamer(
     std::wstring portName,
     const GUID& guid,
     const winrt::Windows::Perception::Spatial::SpatialCoordinateSystem& coordSystem)
@@ -25,12 +26,14 @@ Streamer::Streamer(
     StartServer();
 }
 
-winrt::Windows::Foundation::IAsyncAction Streamer::StartServer()
+
+// https://docs.microsoft.com/en-us/windows/uwp/networking/sockets
+winrt::Windows::Foundation::IAsyncAction ResearchModeFrameStreamer::StartServer()
 {
     try
     {
         // The ConnectionReceived event is raised when connections are received.
-        m_streamSocketListener.ConnectionReceived({ this, &Streamer::OnConnectionReceived });
+        m_streamSocketListener.ConnectionReceived({ this, &ResearchModeFrameStreamer::OnConnectionReceived });
 
         // Start listening for incoming TCP connections on the specified port. You can specify any port that's not currently in use.
         // Every protocol typically has a standard port number. For example, HTTP is typically 80, FTP is 20 and 21, etc.
@@ -38,7 +41,7 @@ winrt::Windows::Foundation::IAsyncAction Streamer::StartServer()
         co_await m_streamSocketListener.BindServiceNameAsync(m_portName);
 #if DBG_ENABLE_INFO_LOGGING
         wchar_t msgBuffer[200];
-        swprintf_s(msgBuffer, L"Streamer::StartServer: Server is listening at %ls. \n",
+        swprintf_s(msgBuffer, L"ResearchModeFrameStreamer::StartServer: Server is listening at %ls. \n",
             m_portName.c_str());
         OutputDebugStringW(msgBuffer);
 #endif // DBG_ENABLE_INFO_LOGGING
@@ -50,51 +53,60 @@ winrt::Windows::Foundation::IAsyncAction Streamer::StartServer()
         SocketErrorStatus webErrorStatus{ SocketError::GetStatus(ex.to_abi()) };
         winrt::hstring message = webErrorStatus != SocketErrorStatus::Unknown ?
             winrt::to_hstring((int32_t)webErrorStatus) : winrt::to_hstring(ex.to_abi());
-        OutputDebugStringW(L"Streamer::StartServer: Failed to open listener with ");
+        OutputDebugStringW(L"ResearchModeFrameStreamer::StartServer: Failed to open listener with ");
         OutputDebugStringW(message.c_str());
         OutputDebugStringW(L"\n");
 #endif
     }
 }
 
-void Streamer::OnConnectionReceived(
+void ResearchModeFrameStreamer::OnConnectionReceived(
     StreamSocketListener /* sender */,
     StreamSocketListenerConnectionReceivedEventArgs args)
 {
-    m_streamSocket = args.Socket();
-    m_writer = args.Socket().OutputStream();
-    m_writer.UnicodeEncoding(UnicodeEncoding::Utf8);
-    m_writer.ByteOrder(ByteOrder::LittleEndian);
+    try
+    {
+        m_streamSocket = args.Socket();
+        m_writer = DataWriter(args.Socket().OutputStream());
+        m_writer.UnicodeEncoding(UnicodeEncoding::Utf8);
+        m_writer.ByteOrder(ByteOrder::LittleEndian);
 
-    m_writeInProgress = false;
-    m_streamingEnabled = true;
+        m_writeInProgress = false;
+        isConnected = true;
+        //m_streamingEnabled = true;
 #if DBG_ENABLE_INFO_LOGGING
-    wchar_t msgBuffer[200];
-    swprintf_s(msgBuffer, L"Streamer::OnConnectionReceived: Received connection at %ls. \n",
-        m_portName.c_str());
-    OutputDebugStringW(msgBuffer);
+        wchar_t msgBuffer[200];
+        swprintf_s(msgBuffer, L"ResearchModeFrameStreamer::OnConnectionReceived: Received connection at %ls. \n",
+            m_portName.c_str());
+        OutputDebugStringW(msgBuffer);
 #endif // DBG_ENABLE_INFO_LOGGING
+    }
+    catch (winrt::hresult_error const& ex)
+    {
+#if DBG_ENABLE_ERROR_LOGGING
+        SocketErrorStatus webErrorStatus{ SocketError::GetStatus(ex.to_abi()) };
+        winrt::hstring message = webErrorStatus != SocketErrorStatus::Unknown ?
+            winrt::to_hstring((int32_t)webErrorStatus) : winrt::to_hstring(ex.to_abi());
+        OutputDebugStringW(L"ResearchModeFrameStreamer::OnConnectionReceived: Failed to establish connection with error ");
+        OutputDebugStringW(message.c_str());
+        OutputDebugStringW(L"\n");
+#endif
+    }
+
 }
 
-void Streamer::Send(
-    IResearchModeSensorFrame* frame,
+void ResearchModeFrameStreamer::Send(
+    std::shared_ptr<IResearchModeSensorFrame> frame,
     ResearchModeSensorType pSensorType)
 {
-#if DBG_ENABLE_INFO_LOGGING
-    OutputDebugStringW(L"Streamer::Send: Received frame for sending!\n");
+#if DBG_ENABLE_VERBOSE_LOGGING
+    OutputDebugStringW(L"ResearchModeFrameStreamer::Send: Received frame for sending!\n");
 #endif
 
     if (!m_streamSocket || !m_writer)
     {
 #if DBG_ENABLE_VERBOSE_LOGGING
-        OutputDebugStringW(L"Streamer::SendFrame: No connection.\n");
-#endif
-        return;
-    }
-    if (!m_streamingEnabled)
-    {
-#if DBG_ENABLE_VERBOSE_LOGGING
-        OutputDebugStringW(L"Streamer::SendFrame: Streaming disabled.\n");
+        OutputDebugStringW(L"ResearchModeFrameStreamer::Send: No connection.\n");
 #endif
         return;
     }
@@ -109,7 +121,7 @@ void Streamer::Send(
     if (!location)
     {
 #if DBG_ENABLE_VERBOSE_LOGGING
-        OutputDebugStringW(L"Streamer::SendFrame: Can't locate frame.\n");
+        OutputDebugStringW(L"ResearchModeFrameStreamer::Send: Can't locate frame.\n");
 #endif
         return;
     }
@@ -128,24 +140,26 @@ void Streamer::Send(
     frame->GetResolution(&resolution);
     HRESULT hr = frame->QueryInterface(IID_PPV_ARGS(&pDepthFrame));
 
-    if (!pDepthFrame)
+    if (!pDepthFrame || !SUCCEEDED(hr))
     {
 #if DBG_ENABLE_VERBOSE_LOGGING
-        OutputDebugStringW(L"Streamer::SendFrame: Failed to grab depth frame.\n");
+        OutputDebugStringW(L"ResearchModeFrameStreamer::Send: Failed to grab depth frame.\n");
 #endif
         return;
     }
+
+    std::shared_ptr<IResearchModeSensorDepthFrame> spDepthFrame(pDepthFrame, [](IResearchModeSensorDepthFrame* sf) { sf->Release(); });
+
     int imageWidth = resolution.Width;
     int imageHeight = resolution.Height;
     int pixelStride = resolution.BytesPerPixel;
 
     int rowStride = imageWidth * pixelStride;
 
-    hr = pDepthFrame->GetBuffer(&pDepth, &outBufferCount);
+    hr = spDepthFrame->GetBuffer(&pDepth, &outBufferCount);
     std::vector<BYTE> depthByteData;
     depthByteData.reserve(outBufferCount * sizeof(UINT16));
 
-    //std::vector<uint16_t> depthBufferAsVector;
     // validate depth & append to vector
     for (size_t i = 0; i < outBufferCount; ++i)
     {
@@ -167,7 +181,7 @@ void Streamer::Send(
     if (m_writeInProgress)
     {
 #if DBG_ENABLE_VERBOSE_LOGGING
-        OutputDebugStringW(L"Streamer::SendFrame: Write already in progress.\n");
+        OutputDebugStringW(L"ResearchModeFrameStreamer::SendFrame: Write already in progress.\n");
 #endif
         return;
     }
@@ -188,7 +202,7 @@ void Streamer::Send(
         m_writer.WriteBytes(depthByteData);
 
 #if DBG_ENABLE_VERBOSE_LOGGING
-        OutputDebugStringW(L"Streamer::SendFrame: Trying to store writer...\n");
+        OutputDebugStringW(L"ResearchModeFrameStreamer::SendFrame: Trying to store writer...\n");
 #endif
         m_writer.StoreAsync();
     }
@@ -204,7 +218,7 @@ void Streamer::Send(
         }
 #if DBG_ENABLE_ERROR_LOGGING
         winrt::hstring message = ex.message();
-        OutputDebugStringW(L"Streamer::SendFrame: Sending failed with ");
+        OutputDebugStringW(L"ResearchModeFrameStreamer::SendFrame: Sending failed with ");
         OutputDebugStringW(message.c_str());
         OutputDebugStringW(L"\n");
 #endif // DBG_ENABLE_ERROR_LOGGING
@@ -212,35 +226,13 @@ void Streamer::Send(
 
     m_writeInProgress = false;
 
-    if (pDepthFrame)
-    {
-        pDepthFrame->Release();
-    }
-
 #if DBG_ENABLE_VERBOSE_LOGGING
-    OutputDebugStringW(L"Streamer::SendFrame: Frame sent!\n");
+    OutputDebugStringW(L"ResearchModeFrameStreamer::SendFrame: Frame sent!\n");
 #endif
 }
 
-void Streamer::StreamingToggle()
-{
-#if DBG_ENABLE_INFO_LOGGING
-    OutputDebugStringW(L"Streamer::StreamingToggle: Received!\n");
-#endif
-    if (m_streamingEnabled)
-    {
-        m_streamingEnabled = false;
-    }
-    else if (!m_streamingEnabled)
-    {
-        m_streamingEnabled = true;
-    }
-#if DBG_ENABLE_INFO_LOGGING
-    OutputDebugStringW(L"Streamer::StreamingToggle: Done!\n");
-#endif
-}
 
-void Streamer::WriteMatrix4x4(
+void ResearchModeFrameStreamer::WriteMatrix4x4(
     _In_ winrt::Windows::Foundation::Numerics::float4x4 matrix)
 {
     m_writer.WriteSingle(matrix.m11);
@@ -264,7 +256,7 @@ void Streamer::WriteMatrix4x4(
     m_writer.WriteSingle(matrix.m44);
 }
 
-void Streamer::SetLocator(const GUID& guid)
+void ResearchModeFrameStreamer::SetLocator(const GUID& guid)
 {
     m_locator = Preview::SpatialGraphInteropPreview::CreateLocatorForNode(guid);
 }

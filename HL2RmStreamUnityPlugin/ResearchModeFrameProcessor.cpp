@@ -1,5 +1,4 @@
 #include "pch.h"
-#include "ResearchModeFrameProcessor.h"
 
 #define DBG_ENABLE_VERBOSE_LOGGING 0
 #define DBG_ENABLE_INFO_LOGGING 1
@@ -11,41 +10,70 @@ ResearchModeFrameProcessor::ResearchModeFrameProcessor(
     IResearchModeSensor* pLLSensor,
     HANDLE camConsentGiven,
     ResearchModeSensorConsent* camAccessConsent,
-    const long long minDelta,
-    std::shared_ptr<IResearchModeFrameSink> frameSink)
+    const unsigned long long minDelta,
+    std::shared_ptr<IResearchModeFrameSink> frameSink) :
+    m_pRMSensor(pLLSensor),
+    m_camConsentGiven(camConsentGiven),
+    m_pCamAccessConsent(camAccessConsent),
+    m_minDelta(minDelta),
+    m_pFrameSink(frameSink)
 {
+    m_pRMSensor->AddRef();
+    m_pSensorFrame = nullptr;
+    m_fExit = false;
+
 #if DBG_ENABLE_INFO_LOGGING
     wchar_t msgBuffer[200];
-    swprintf_s(msgBuffer, L"ResearchModeFrameProcessor: Creating Processor for Sensor %ls\n",
+    swprintf_s(msgBuffer, L"ResearchModeFrameProcessor: Created processor for sensor %ls\n",
         pLLSensor->GetFriendlyName());
     OutputDebugStringW(msgBuffer);
 #endif
-    m_pRMSensor = pLLSensor;
-    m_pRMSensor->AddRef();
-    m_pFrameSink = frameSink;
-    m_pSensorFrame = nullptr;
-    m_fExit = false;
-    m_minDelta = minDelta;
-
-    // the camera update thread
-    m_pCameraUpdateThread = new std::thread(
-        CameraUpdateThread, this, camConsentGiven, camAccessConsent);
-
-    m_pProcessThread = new std::thread(FrameProcesingThread, this);
 }
 
 ResearchModeFrameProcessor::~ResearchModeFrameProcessor()
 {
-    m_pCameraUpdateThread->join();
-
+    m_fExit = true;
+    if (m_cameraUpdateThread.joinable())
+    {
+        m_cameraUpdateThread.join();
+    }
     if (m_pRMSensor)
     {
         m_pRMSensor->CloseStream();
         m_pRMSensor->Release();
     }
-
-    m_pProcessThread->join();
+    if (m_processThread.joinable())
+    {
+        m_processThread.join();
+    }
 }
+
+void ResearchModeFrameProcessor::Stop()
+{
+    m_fExit = true;
+    if (m_cameraUpdateThread.joinable())
+    {
+        m_cameraUpdateThread.join();
+    }
+    if (m_pRMSensor)
+    {
+        m_pRMSensor->CloseStream();
+    }
+    if (m_processThread.joinable())
+    {
+        m_processThread.join();
+    }
+    isRunning = false;
+}
+
+void ResearchModeFrameProcessor::Start()
+{
+    m_fExit = false;
+    m_cameraUpdateThread = std::thread(CameraUpdateThread, this, m_camConsentGiven, m_pCamAccessConsent);
+    m_processThread = std::thread(FrameProcessingThread, this);
+    isRunning = true;
+}
+
 
 void ResearchModeFrameProcessor::CameraUpdateThread(
     ResearchModeFrameProcessor* pResearchModeFrameProcessor,
@@ -111,22 +139,19 @@ void ResearchModeFrameProcessor::CameraUpdateThread(
         // frame acquisition loop
         while (!pResearchModeFrameProcessor->m_fExit && pResearchModeFrameProcessor->m_pRMSensor)
         {
-            HRESULT hr = S_OK;
-            IResearchModeSensorFrame* pSensorFrame = nullptr;
-
+            hr = S_OK;
             // try to grab the next frame
+            IResearchModeSensorFrame* pSensorFrame = nullptr;
             hr = pResearchModeFrameProcessor->m_pRMSensor->GetNextBuffer(&pSensorFrame);
 
             if (SUCCEEDED(hr))
             {
                 std::lock_guard<std::mutex> guard(pResearchModeFrameProcessor->
                     m_sensorFrameMutex);
-                // Assign the new sensor frame
-                if (pResearchModeFrameProcessor->m_pSensorFrame)
-                {
-                    pResearchModeFrameProcessor->m_pSensorFrame->Release();
-                }
-                pResearchModeFrameProcessor->m_pSensorFrame = pSensorFrame;
+
+                std::shared_ptr<IResearchModeSensorFrame> spSensorFrame(pSensorFrame, [](IResearchModeSensorFrame* sf) { sf->Release(); });
+
+                pResearchModeFrameProcessor->m_pSensorFrame = spSensorFrame;
 #if DBG_ENABLE_VERBOSE_LOGGING
                 OutputDebugStringW(L"ResearchModeFrameProcessor::CameraUpdateThread: Updated frame.\n");
 #endif
@@ -151,7 +176,7 @@ void ResearchModeFrameProcessor::CameraUpdateThread(
 }
 
 
-void ResearchModeFrameProcessor::FrameProcesingThread(
+void ResearchModeFrameProcessor::FrameProcessingThread(
     ResearchModeFrameProcessor* pProcessor)
 {
 #if DBG_ENABLE_INFO_LOGGING
@@ -172,7 +197,8 @@ void ResearchModeFrameProcessor::FrameProcesingThread(
     }
 }
 
-bool ResearchModeFrameProcessor::IsValidTimestamp(IResearchModeSensorFrame* pSensorFrame)
+bool ResearchModeFrameProcessor::IsValidTimestamp(
+    std::shared_ptr<IResearchModeSensorFrame> pSensorFrame)
 {
     ResearchModeSensorTimestamp timestamp;
     if (pSensorFrame)

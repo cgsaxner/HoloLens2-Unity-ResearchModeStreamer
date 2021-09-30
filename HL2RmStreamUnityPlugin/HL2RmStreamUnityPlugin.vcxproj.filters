@@ -10,20 +10,23 @@
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="HL2RmStreamUnityPlugin.cpp" />
     <ClCompile Include="pch.cpp" />
-    <ClCompile Include="Streamer.cpp" />
+    <ClCompile Include="ResearchModeFrameStreamer.cpp" />
     <ClCompile Include="TimeConverter.cpp" />
     <ClCompile Include="ResearchModeFrameProcessor.cpp" />
     <ClCompile Include="VideoCameraStreamer.cpp" />
+    <ClCompile Include="VideoCameraFrameProcessor.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="HL2RmStreamUnityPlugin.h" />
-    <ClInclude Include="pch.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="ResearchModeApi.h" />
-    <ClInclude Include="Streamer.h" />
+    <ClInclude Include="ResearchModeFrameStreamer.h" />
     <ClInclude Include="IResearchModeFrameSink.h" />
     <ClInclude Include="TimeConverter.h" />
     <ClInclude Include="ResearchModeFrameProcessor.h" />
     <ClInclude Include="VideoCameraStreamer.h" />
+    <ClInclude Include="pch.h" />
+    <ClInclude Include="IVideoFrameSink.h" />
+    <ClInclude Include="VideoCameraFrameProcessor.h" />
   </ItemGroup>
 </Project>

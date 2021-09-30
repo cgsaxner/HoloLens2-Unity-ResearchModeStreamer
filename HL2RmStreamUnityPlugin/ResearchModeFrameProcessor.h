@@ -6,38 +6,45 @@ public:
 		IResearchModeSensor* pLLSensor,
 		HANDLE camConsentGiven,
 		ResearchModeSensorConsent* camAccessConsent,
-		const long long minDelta,
+		const unsigned long long minDelta,
 		std::shared_ptr<IResearchModeFrameSink> frameSink);
 
 	~ResearchModeFrameProcessor();
 
+	void Stop();
+
+	void Start();
+
+	bool isRunning = false;
+
 protected:
-	// Thread for retrieving frames
 	static void CameraUpdateThread(
-		ResearchModeFrameProcessor* pVLCprocessor,
+		ResearchModeFrameProcessor* pProcessor,
 		HANDLE camConsentGiven,
 		ResearchModeSensorConsent* camAccessConsent);
 
-	static void FrameProcesingThread(
+	static void FrameProcessingThread(
 		ResearchModeFrameProcessor* pProcessor);
 
-	bool IsValidTimestamp(IResearchModeSensorFrame* pSensorFrame);
+	bool IsValidTimestamp(
+		std::shared_ptr<IResearchModeSensorFrame> pSensorFrame);
 
 	// Mutex to access sensor frame
 	std::mutex m_sensorFrameMutex;
+
 	IResearchModeSensor* m_pRMSensor = nullptr;
-	IResearchModeSensorFrame* m_pSensorFrame = nullptr;
+	std::shared_ptr<IResearchModeSensorFrame> m_pSensorFrame = nullptr;
 	std::shared_ptr<IResearchModeFrameSink> m_pFrameSink = nullptr;
 
 	bool m_fExit = false;
 	// thread for reading frames
-	std::thread* m_pCameraUpdateThread;
+	std::thread m_cameraUpdateThread;
 	// thread for processing frames
-	std::thread* m_pProcessThread;
+	std::thread m_processThread;
 
 	UINT64 m_prevTimestamp = 0;
-	// minDelta allows to enforce a certain time delay between frames
-	// should be set in hundreds of nanoseconds (ms * 1e-4)
-	long long m_minDelta = 0;
+	unsigned long long m_minDelta = 0;
+	HANDLE m_camConsentGiven;
+	ResearchModeSensorConsent* m_pCamAccessConsent;
 };
 

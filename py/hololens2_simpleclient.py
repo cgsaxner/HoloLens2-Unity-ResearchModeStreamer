@@ -39,7 +39,7 @@ RM_FRAME_STREAM_HEADER = namedtuple(
 VIDEO_STREAM_PORT = 23940
 AHAT_STREAM_PORT = 23941
 
-HOST = '192.168.0.80'
+HOST = '192.168.47.2'
 
 HundredsOfNsToMilliseconds = 1e-4
 MillisecondsToSeconds = 1e-3
