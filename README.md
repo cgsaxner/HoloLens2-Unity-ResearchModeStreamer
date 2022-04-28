@@ -5,6 +5,7 @@ Unity Plugin for accessing HoloLens2 Research Mode sensors and video camera, and
 Currently, only Depth AHAT and video camera streams are enabled, but an extension to other RM sensors should be straight forward and will probably be added in the future. The image, as well as ```rig2world``` transforms for AHAT and and ```pv2world```, ```fx``` and ```fy``` for video camera are transmitted for each frame.
 
 ## Dependencies
+### Plugin
 * [Eigen](https://eigen.tuxfamily.org/index.php?title=Main_Page) >= 3.3.6
 * [Visual Studio 2019](https://developer.microsoft.com/en-us/windows/downloads) (community edition is fine) 
 with UWP support
