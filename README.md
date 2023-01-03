@@ -13,7 +13,7 @@ with UWP support
 
 ## Using the Plugin
 1. Open the [plugin solution](https://github.com/cgsaxner/HoloLens2-Unity-ResearchModeStreamer/tree/master/HL2RmStreamUnityPlugin) in Visual Studio
-2. Add path to Eigen under _Project -> Properties -> C/C++ -> General -> Additional Include Directories_.
+2. Add path to Eigen under _Project -> Properties -> C/C++ -> General -> Additional Include Directories_ or copy the folder containing Eigen headers to ```HL2RmStreamUnityPlugin/Dependencies```.
 3. Build the solution for ```Release, ARM64```.
 4. In your Unity Project, create a folder ```Assets/Plugins/WSAPlayer/ARM64```.
 5. Copy the  ```HL2RmStreamUnityPlugin.dll``` from ```HL2RmStreamUnityPlugin/ARM64/Release/HL2RmStreamUnityPlugin``` into the folder from step 3.

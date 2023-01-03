@@ -217,14 +217,14 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <PreprocessorDefinitions>FUNCTIONS_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalOptions>/await %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalIncludeDirectories>D:\Christina\Code\eigen-3.3.7\Eigen;D:\Christina\HoloLens2RMFrameStreamer\HL2RmStreamUnityPlugin\Dependencies\include\opencv2\;D:\Christina\HoloLens2RMFrameStreamer\HL2RmStreamUnityPlugin\Dependencies\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Dependencies\Eigen;$(ProjectDir)Dependencies\bin;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <GenerateWindowsMetadata>false</GenerateWindowsMetadata>
-      <AdditionalLibraryDirectories>D:\Christina\HoloLens2RMFrameStreamer\HL2RmStreamUnityPlugin\Dependencies\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>opencv_calib3d430.lib;opencv_core430.lib;opencv_features2d430.lib;opencv_flann430.lib;opencv_highgui430.lib;opencv_imgcodecs430.lib;opencv_imgproc430.lib;opencv_ml430.lib;opencv_objdetect430.lib;opencv_photo430.lib;opencv_stitching430.lib;opencv_video430.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)Dependencies\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
